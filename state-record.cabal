@@ -9,7 +9,7 @@ copyright: (c) 2011 Karl Voelker
 maintainer: Karl Voelker <ktvoelker@gmail.com>
 build-depends: base -any, mtl -any, template-haskell -any
 stability: unstable
-homepage: http://www.github.com/ktvoelker/fields
+homepage: http://github.com/ktvoelker/state-record
 package-url:
 bug-reports: Karl Voelker <ktvoelker@gmail.com>
 synopsis: Better records for State monad states
