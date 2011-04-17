@@ -10,3 +10,5 @@ a single field descriptor.
 Support underscore-based naming as well as camel case. Provide wrappers around
 a single underlying function which takes all the relevant parameters.
 
+Write tests.
+
