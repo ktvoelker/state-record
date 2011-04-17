@@ -1,15 +1,14 @@
 
 {-# LANGUAGE TemplateHaskell #-}
-module Fields (Field(..), record, upd, enter) where
+module Data.Record.StateFields.Core (Field(..), record) where
 
-import Control.Monad.State
 import Data.Char
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
 data Field c a = Field
   { getField :: c -> a
-  , putField :: c -> a -> c
+  , putField :: a -> c -> c
   }
 
 record :: String -> Q [Dec] -> Q [Dec]
@@ -43,7 +42,7 @@ record pre ds = ds >>= \ds -> case ds of
         (normalB [|
           Field
           { getField = $(varE rName)
-          , putField = $(lamE [varP r, varP v]
+          , putField = $(lamE [varP v, varP r]
             $ recUpdE (varE r) [return (rName, VarE v)])
           }
         |])
@@ -52,40 +51,8 @@ record pre ds = ds >>= \ds -> case ds of
         fName = fieldName name
         rName = rawName name
 
-upd :: Name -> Q Exp
-upd n = do
-  p0 <- newName "f"
-  p1 <- newName "x"
-  return $
-    LamE [VarP p0, VarP p1] $
-    RecUpdE (VarE p1) [(n, AppE (VarE p0) (AppE (VarE n) (VarE p1)))]
-
-enter :: Name -> Q Exp
-enter n = do
-  s <- newName "s"
-  v <- newName "v"
-  r <- newName "r"
-  w <- newName "w"
-  t <- newName "t"
-  let u = return (n, VarE w)
-  let body = [| runState $(varE s) $(varE v) |]
-  lamE [varP s] $ doE 
-    [ bindS (varP v) [| gets $(varE n) |]
-    , letS [valD (tupP [varP r, varP w]) (normalB body) []]
-    , noBindS [| modify $(lamE [varP t] $ recUpdE (varE t) [u]) |]
-    , noBindS [| return $(varE r) |]
-    ]
-
-data Foo = Foo { foo :: Int }
-
 record' :: IO ()
 record' =
   runQ (record "bar" [d| data Bar = Bar { bar :: Int } |])
   >>= print . ppr
-
-upd' :: IO ()
-upd' = runQ (upd 'foo) >>= print . ppr
-
-enter' :: IO ()
-enter' = runQ (enter 'foo) >>= print . ppr
 
