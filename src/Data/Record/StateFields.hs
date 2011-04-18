@@ -11,8 +11,12 @@ module Data.Record.StateFields
   , modf
   , enter
   , enterT
+  , askf
+  , proj
+  , projT
   ) where
 
+import Control.Monad.Reader
 import Control.Monad.State
 import qualified Data.Record.StateFields.Core as Core
 import Data.Record.StateFields.Core (Field(), record)
@@ -49,7 +53,7 @@ infixl 9 //
 
 -- | Get the value of a field from the state.
 getf :: (MonadState s m, SomeField f) => f s a -> m a
-getf f = gets $ getField f
+getf = gets . getField
 
 -- | Put a value into a field in the state.
 putf :: (MonadState s m, SomeField f) => f s a -> a -> m ()
@@ -75,4 +79,17 @@ enterT f s = do
   (y, x') <- lift $ runStateT s x
   putf f x'
   return y
+
+-- | Get the value of a field in the environment.
+askf :: (MonadReader r m, SomeField f) => f r a -> m a
+askf = asks . getField
+
+-- | Project a field and use it as the environment of a computation.
+proj :: (MonadReader r m, SomeField f) => f r a -> Reader a b -> m b
+proj f r = askf f >>= return . runReader r
+
+-- | Like 'proj', but allows the subcomputation on the field to share the
+--   same underlying monad as the enclosing record.
+projT :: (Monad m, SomeField f) => f r a -> ReaderT a m b -> ReaderT r m b
+projT f r = askf f >>= lift . runReaderT r
 
