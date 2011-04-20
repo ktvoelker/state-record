@@ -2,6 +2,12 @@
 TODO
 ====
 
+Add export list to the new main module.
+
+Add Reader/ReaderT support to the new main module (askf and proj).
+
+  Can any FieldPaths with mixtures of States and Readers be supported?
+
 Support records with an empty prefix correctly by not capitalizing the names.
 
 Support records which have two variants with a common field by only generating

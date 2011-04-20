@@ -1,95 +1,80 @@
 
 module Data.Record.StateFields
-  ( Core.Field()
-  , Core.record
-  , SomeField(..)
-  , modField
-  , FieldPath()
-  , (//)
-  , getf
-  , putf
-  , modf
-  , enter
-  , enterT
-  , askf
-  , proj
-  , projT
+  (
   ) where
+
+import Data.Record.StateFields.Core
+import Data.Record.StateFields.Templates
 
 import Control.Monad.Reader
 import Control.Monad.State
-import qualified Data.Record.StateFields.Core as Core
-import Data.Record.StateFields.Core (Field(), record)
 
--- | The class of field descriptors. A descriptor of type 'f a b' refers to a
---   field of type 'b' nested somewhere within a record of type 'a'.
-class SomeField f where
-  -- | Get the value of a field.
-  getField :: f a b -> a -> b
-  -- | Put a value into a field.
-  putField :: f a b -> b -> a -> a
+{-- New Stuff --}
 
-instance SomeField Field where
-  getField = Core.getField
-  putField = Core.putField
-
--- | Modify the value of a field by applying a function.
-modField :: (SomeField f) => f s a -> (a -> a) -> s -> s
-modField f g c = putField f (g $ getField f c) c
+-- | A field descriptor with monadic effects.
+data MonadField m a b = MonadField
+  { getFieldM :: m b
+  , putFieldM :: b -> m ()
+  }
 
 -- | A compound field descriptor.
-data FieldPath f g b a c = FieldPath (f a b) (g b c)
-
-instance (SomeField f, SomeField g) => SomeField (FieldPath f g b) where
-  getField (FieldPath x y) = getField y . getField x
-  putField (FieldPath x y) v s = modField x (\a -> putField y v a) s
+data FieldPath f g b a c = FieldPath (f b) (g c)
 
 infixl 9 //
 
 -- | Join two field descriptors into a compound.
 --   '//' is left-associative with precedence level 9.
-(//) :: (SomeField f, SomeField g) => f a b -> g b c -> FieldPath f g b a c
+(//) :: f b -> g c -> FieldPath f g b a c
 (//) = FieldPath
 
--- | Get the value of a field from the state.
-getf :: (MonadState s m, SomeField f) => f s a -> m a
-getf = gets . getField
+class Field f m a | f -> a, m -> a where
+  getf :: f b -> m b
+  putf :: f b -> b -> m ()
 
--- | Put a value into a field in the state.
-putf :: (MonadState s m, SomeField f) => f s a -> a -> m ()
-putf f = modify . putField f
+instance Field (IdField a) (State a) a where
+  getf = gets . getField
+  putf f b = get >>= put . putField f b
 
--- | Modify the value of a field in the state by applying a function.
-modf :: (MonadState s m, SomeField f) => f s a -> (a -> a) -> m ()
-modf f g = modify $ modField f g
+instance (Monad m) => Field (IdField a) (StateT a m) a where
+  getf = gets . getField
+  putf f b = get >>= put . putField f b
 
--- | Enter the context of a field and run a stateful computation there.
-enter :: (MonadState s m, SomeField f) => f s a -> State a b -> m b
-enter f s = do
-  x <- getf f
-  let (y, x') = runState s x
-  putf f x'
-  return y
+instance (MonadState a m) => Field (MonadField (State a) a) m a where
+  getf f = do
+    a <- get
+    let (b, a') = runState (getFieldM f) a
+    put a'
+    return b
+  putf f b = do
+    a <- get
+    let a' = execState (putFieldM f b) a
+    put a'
 
--- | Like 'enter', but allows the stateful computation on the field to
---   share the same underlying monad as the enclosing record.
-enterT :: (Monad m, SomeField f) => f s a -> StateT a m b -> StateT s m b
-enterT f s = do
-  x <- getf f
-  (y, x') <- lift $ runStateT s x
-  putf f x'
-  return y
+instance (Monad m) => Field (MonadField (StateT a m) a) (StateT a m) a where
+  getf = getFieldM
+  putf = putFieldM
 
--- | Get the value of a field in the environment.
-askf :: (MonadReader r m, SomeField f) => f r a -> m a
-askf = asks . getField
+instance (MonadState a m, Field f m a, Field g (State b) b)
+  => Field (FieldPath f g b a) m a where
+  getf (FieldPath f g) = do
+    b <- getf f
+    let (c, b') = runState (getf g) b
+    putf f b'
+    return c
+  putf (FieldPath f g) c = do
+    b <- getf f
+    let b' = execState (putf g c) b
+    putf f b'
 
--- | Project a field and use it as the environment of a computation.
-proj :: (MonadReader r m, SomeField f) => f r a -> Reader a b -> m b
-proj f r = askf f >>= return . runReader r
-
--- | Like 'proj', but allows the subcomputation on the field to share the
---   same underlying monad as the enclosing record.
-projT :: (Monad m, SomeField f) => f r a -> ReaderT a m b -> ReaderT r m b
-projT f r = askf f >>= lift . runReaderT r
+instance (Monad m, Field f (StateT a m) a, Field g (StateT b m) b)
+  => Field (FieldPath f g b a) (StateT a m) a where
+  getf (FieldPath f g) = do
+    b <- getf f
+    (c, b') <- lift $ runStateT (getf g) b
+    putf f b'
+    return c
+  putf (FieldPath f g) c = do
+    b <- getf f
+    b' <- lift $ execStateT (putf g c) b
+    putf f b'
 

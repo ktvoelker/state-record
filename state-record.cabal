@@ -1,6 +1,6 @@
 
 name: state-record
-version: 0.0.1
+version: 0.0.1.1
 cabal-version: -any
 build-type: Simple
 license: GPL
@@ -17,7 +17,13 @@ description: This package provides a Template Haskell function which transforms
 category: Data
 author: Karl Voelker <ktvoelker@gmail.com>
 exposed-modules: Data.Record.StateFields
-other-modules: Data.Record.StateFields.Core
+other-modules: Data.Record.StateFields.Core Data.Record.StateFields.Templates
 hs-source-dirs: src
-extensions: TemplateHaskell
+extensions:
+  TemplateHaskell
+  MultiParamTypeClasses
+  FunctionalDependencies
+  FlexibleInstances
+  FlexibleContexts
+  UndecidableInstances
 
