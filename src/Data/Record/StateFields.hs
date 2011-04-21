@@ -7,6 +7,8 @@ module Data.Record.StateFields
   , RField(..)
   , WField(..)
   , RWField(..)
+  , MonadGet(..)
+  , getStoreProj
   , modf
   , enter
   , enterT
@@ -47,16 +49,33 @@ class WField f m a | f -> a, m -> a where
 -- | The class of field descriptors which are both readable and writable.
 class (RField f m a, WField f m a) => RWField f m a | f -> a, m -> a
 
+-- | The class of monads which have an internal store that can be retrieved.
+class (Monad m) => MonadGet s m | m -> s where
+  getStore :: m s
+
+instance MonadGet s (Reader s) where
+  getStore = ask
+
+instance MonadGet s (State s) where
+  getStore = get
+
+instance (Monad m) => MonadGet s (ReaderT s m) where
+  getStore = ask
+
+instance (Monad m) => MonadGet s (StateT s m) where
+  getStore = get
+
+-- | Get a projection of the monadic store.
+getStoreProj :: (MonadGet s m) => (s -> a) -> m a
+getStoreProj f = getStore >>= return . f
+
 instance (RField f m a, WField f m a) => RWField f m a
 
-instance RField (IdField a) (State a) a where
-  getf = gets . getField
+instance (MonadGet a m) => RField (IdField a) m a where
+  getf = getStoreProj . getField
 
 instance WField (IdField a) (State a) a where
   putf f b = get >>= put . putField f b
-
-instance (Monad m) => RField (IdField a) (StateT a m) a where
-  getf = gets . getField
 
 instance (Monad m) => WField (IdField a) (StateT a m) a where
   putf f b = get >>= put . putField f b
