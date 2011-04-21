@@ -1,0 +1,77 @@
+
+First, let's enumerate all the things we'd like to combine in various ways:
+
+Field types:
+
+  (A) IdField a b
+  (B) MonadField (State a) a b
+  (C) MonadField (State b) a b
+  (D) MonadField (StateT a m) a b
+  (E) MonadField (StateT b m) a b
+  (F) MonadField (Reader a) a b
+  (G) MonadField (Reader b) a b
+  (H) MonadField (ReaderT a m) a b
+  (I) MonadField (ReaderT b m) a b
+
+Monad types:
+
+  (1) State a
+  (2) StateT a m
+  (3) Reader a
+  (4) ReaderT a m
+
+Now, let's enumerate all the ways we might want to combine things:
+
+  (1) Monad x Field (getf/putf/modf)
+  (2) Monad x Field x Monad (enter/enterT/proj/projT)
+  (3) Field x Field (//)
+
+Note: whenever two monads are combined, if they are both monad transformers,
+it is assumed that the underlying monads must be the same.
+
+Key:
+  
+  x  supported
+  ?  might be supported and could be
+  o  not supported but could be
+  -  not supported and probably shouldn't or can't be
+
+Enumeration 1:
+
+  A B C D E F G H I
+1 x x ? - - o o - -
+2 x ? ? x ? o o - -
+3 x - - - - x ? - -
+4 x - - - - ? ? x ?
+
+Enumeration 2:
+
+        1 2 3 4
+1xABC   ? - ? -
+1xFG    - - ? -
+2xABCDE ? ? ? ?
+2xFG    - - ? ?
+3xA     - - ? -
+3xFG    - - ? -
+4xA     - - ? ?
+4xFGHI  - - ? ?
+
+Enumeration 3 is not very interesting, because every combination could be
+supported. What is interesting are the resulting monad types produced from
+various combinations. This can be summarized by a few rules:
+
+  (1) If either is a State or StateT, the result is a State or StateT.
+  (2) If either is a StateT or ReaderT, the result is a StateT or ReaderT.
+  (3) If both are Id, the result is Id.
+
+  These rules are equivalent to taking the meet of the input monads in this
+  lattice:
+
+       Id
+        |
+     Reader
+      /  \
+  State ReaderT
+      \  /
+     StateT
+

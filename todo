@@ -2,11 +2,12 @@
 TODO
 ====
 
-Add export list to the new main module.
+Try making (//) be a method of a class. It could then package up the
+combination behind the functional interface of a MonadField, which would
+mean that the Field classes would only have to have instances for a finite
+number of field forms.
 
-Add Reader/ReaderT support to the new main module (askf and proj).
-
-  Can any FieldPaths with mixtures of States and Readers be supported?
+Implement the recommendations in the file "table".
 
 Support records with an empty prefix correctly by not capitalizing the names.
 
