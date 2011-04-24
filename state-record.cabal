@@ -1,6 +1,6 @@
 
 name: state-record
-version: 0.0.1.1
+version: 0.0.1.2
 cabal-version: -any
 build-type: Simple
 license: GPL
@@ -26,4 +26,5 @@ extensions:
   FlexibleInstances
   FlexibleContexts
   UndecidableInstances
+  ScopedTypeVariables
 

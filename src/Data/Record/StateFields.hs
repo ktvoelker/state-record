@@ -1,9 +1,9 @@
 
 module Data.Record.StateFields
-  ( IdField()
-  , MonadField()
-  , FieldPath()
-  , (//)
+  ( IdField(..)
+  , StateField(..)
+  , ReaderField(..)
+  , FieldPath(..)
   , RField(..)
   , WField(..)
   , RWField(..)
@@ -14,6 +14,7 @@ module Data.Record.StateFields
   , enterT
   , proj
   , projT
+  , record
   ) where
 
 import Data.Record.StateFields.Core
@@ -22,21 +23,127 @@ import Data.Record.StateFields.Templates
 import Control.Monad.Reader
 import Control.Monad.State
 
--- | A field descriptor with monadic effects.
-data MonadField m a b = MonadField
+-- | A field descriptor with stateful effects.
+data StateField m a b = StateField
   { getFieldM :: m b
   , putFieldM :: b -> m ()
   }
 
--- | A compound field descriptor.
-data FieldPath f g b a c = FieldPath (f b) (g c)
+-- | Make a StateField from an IdField.
+idStateField :: (MonadState a m) => IdField a b -> StateField m a b
+idStateField f =
+  StateField
+  { getFieldM = gets $ getField f
+  , putFieldM = \b -> get >>= \a -> put $ putField f b a
+  }
+
+-- | A field descriptor which operates in an environment.
+data ReaderField m a b = ReaderField
+  { getFieldR :: m b
+  }
+
+-- | Make a ReaderField from an IdField.
+idReaderField :: (MonadReader a m) => IdField a b -> ReaderField m a b
+idReaderField f =
+  ReaderField
+  { getFieldR = asks $ getField f
+  }
 
 infixl 9 //
 
--- | Join two field descriptors into a compound.
---   '//' is left-associative with precedence level 9.
-(//) :: f b -> g c -> FieldPath f g b a c
-(//) = FieldPath
+-- | The class of field descriptors which can be chained into paths.
+class FieldPath f g h | f g -> h where
+  -- | Join two field descriptors into a compound.
+  --   '//' is left-associative with precedence level 9.
+  (//) :: f -> g -> h
+
+instance FieldPath (IdField a b) (IdField b c) (IdField a c) where
+  ab // bc =
+    IdField
+    { getField = getField bc . getField ab
+    , putField = \c a -> putField ab (putField bc c $ getField ab a) a
+    }
+
+instance FieldPath (IdField a b) (StateField (State b) b c)
+  (StateField (State a) a c) where
+  ab // bc = (idStateField ab :: StateField (State a) a b) // bc
+
+instance (Monad m) => FieldPath (IdField a b) (StateField (StateT b m) b c)
+  (StateField (StateT a m) a c) where
+  ab // bc = (idStateField ab :: StateField (StateT a m) a b) // bc
+
+instance FieldPath (StateField (State a) a b) (IdField b c)
+  (StateField (State a) a c) where
+  ab // bc = ab // (idStateField bc :: StateField (State b) b c)
+
+instance (Monad m) => FieldPath (StateField (StateT a m) a b) (IdField b c)
+  (StateField (StateT a m) a c) where
+  ab // bc = ab // (idStateField bc :: StateField (StateT b m) b c)
+
+instance (Monad m) =>
+  FieldPath (StateField (StateT a m) a b) (StateField (StateT b m) b c)
+    (StateField (StateT a m) a c) where
+  ab // bc =
+    StateField
+    { getFieldM = enterT ab $ getFieldM bc
+    , putFieldM = enterT ab . putFieldM bc
+    }
+
+instance (Monad m) =>
+  FieldPath (StateField (StateT a m) a b) (StateField (State b) b c)
+    (StateField (StateT a m) a c) where
+  ab // bc =
+    StateField
+    { getFieldM = enter ab $ getFieldM bc
+    , putFieldM = enter ab . putFieldM bc
+    }
+
+instance FieldPath (StateField (State a) a b) (StateField (State b) b c)
+    (StateField (State a) a c) where
+  ab // bc =
+    StateField
+    { getFieldM = enter ab $ getFieldM bc
+    , putFieldM = enter ab . putFieldM bc
+    }
+
+instance FieldPath (IdField a b) (ReaderField (Reader b) b c)
+  (ReaderField (Reader a) a c) where
+  ab // bc = (idReaderField ab :: ReaderField (Reader a) a b) // bc
+
+instance (Monad m) => FieldPath (IdField a b) (ReaderField (ReaderT b m) b c)
+  (ReaderField (ReaderT a m) a c) where
+  ab // bc = (idReaderField ab :: ReaderField (ReaderT a m) a b) // bc
+
+instance FieldPath (ReaderField (Reader a) a b) (IdField b c)
+  (ReaderField (Reader a) a c) where
+  ab // bc = ab // (idReaderField bc :: ReaderField (Reader b) b c)
+
+instance (Monad m) => FieldPath (ReaderField (ReaderT a m) a b) (IdField b c)
+  (ReaderField (ReaderT a m) a c) where
+  ab // bc = ab // (idReaderField bc :: ReaderField (ReaderT b m) b c)
+
+instance (Monad m) =>
+  FieldPath (ReaderField (ReaderT a m) a b) (ReaderField (ReaderT b m) b c)
+    (ReaderField (ReaderT a m) a c) where
+  ab // bc =
+    ReaderField
+    { getFieldR = projT ab $ getFieldR bc
+    }
+
+instance (Monad m) =>
+  FieldPath (ReaderField (ReaderT a m) a b) (ReaderField (Reader b) b c)
+    (ReaderField (ReaderT a m) a c) where
+  ab // bc =
+    ReaderField
+    { getFieldR = proj ab $ getFieldR bc
+    }
+
+instance FieldPath (ReaderField (Reader a) a b) (ReaderField (Reader b) b c)
+    (ReaderField (Reader a) a c) where
+  ab // bc =
+    ReaderField
+    { getFieldR = proj ab $ getFieldR bc
+    }
 
 -- | The class of readable field descriptors.
 class RField f m a | f -> a, m -> a where
@@ -80,73 +187,36 @@ instance WField (IdField a) (State a) a where
 instance (Monad m) => WField (IdField a) (StateT a m) a where
   putf f b = get >>= put . putField f b
 
-instance (MonadState a m) => RField (MonadField (State a) a) m a where
+instance (MonadState a m) => RField (StateField (State a) a) m a where
   getf f = do
     a <- get
     let (b, a') = runState (getFieldM f) a
     put a'
     return b
 
-instance (MonadState a m) => WField (MonadField (State a) a) m a where
+instance (MonadState a m) => WField (StateField (State a) a) m a where
   putf f b = do
     a <- get
     let a' = execState (putFieldM f b) a
     put a'
 
-instance (Monad m) => RField (MonadField (StateT a m) a) (StateT a m) a where
+instance (Monad m) => RField (StateField (StateT a m) a) (StateT a m) a where
   getf = getFieldM
 
-instance (Monad m) => WField (MonadField (StateT a m) a) (StateT a m) a where
+instance (Monad m) => WField (StateField (StateT a m) a) (StateT a m) a where
   putf = putFieldM
-
-instance (MonadState a m, RWField f m a, RWField g (State b) b)
-  => RField (FieldPath f g b a) m a where
-  getf (FieldPath f g) = do
-    b <- getf f
-    let (c, b') = runState (getf g) b
-    putf f b'
-    return c
-
-instance (MonadState a m, RWField f m a, RWField g (State b) b)
-  => WField (FieldPath f g b a) m a where
-  putf (FieldPath f g) c = do
-    b <- getf f
-    let b' = execState (putf g c) b
-    putf f b'
-
-instance (Monad m, RWField f (StateT a m) a, RWField g (StateT b m) b)
-  => RField (FieldPath f g b a) (StateT a m) a where
-  getf (FieldPath f g) = do
-    b <- getf f
-    (c, b') <- lift $ runStateT (getf g) b
-    putf f b'
-    return c
-
-instance (Monad m, RWField f (StateT a m) a, RWField g (StateT b m) b)
-  => WField (FieldPath f g b a) (StateT a m) a where
-  putf (FieldPath f g) c = do
-    b <- getf f
-    b' <- lift $ execStateT (putf g c) b
-    putf f b'
 
 instance (Monad m) => RField (IdField a) (ReaderT a m) a where
   getf = asks . getField
 
-instance (MonadReader a m) => RField (MonadField (Reader a) a) m a where
+instance (MonadReader a m) => RField (ReaderField (Reader a) a) m a where
   getf f = do
     a <- ask
-    let b = runReader (getFieldM f) a
+    let b = runReader (getFieldR f) a
     return b
 
-instance (Monad m) => RField (MonadField (ReaderT a m) a) (ReaderT a m) a where
-  getf = getFieldM
-
-instance (Monad m, RField f (ReaderT a m) a, RField g (ReaderT b m) b)
-  => RField (FieldPath f g b a) (ReaderT a m) a where
-  getf (FieldPath f g) = do
-    b <- getf f
-    c <- lift $ runReaderT (getf g) b
-    return c
+instance (Monad m) => RField (ReaderField (ReaderT a m) a) (ReaderT a m) a where
+  getf = getFieldR
 
 -- | Modify the value of a field by applying a function.
 modf :: (Monad m, RWField f m a) => f b -> (b -> b) -> m ()
