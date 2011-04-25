@@ -2,10 +2,6 @@
 TODO
 ====
 
-Implement the recommendations in the file "table".
-
-Support records with an empty prefix correctly by not capitalizing the names.
-
 Support records which have two variants with a common field by only generating
 a single field descriptor.
 

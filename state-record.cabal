@@ -1,6 +1,6 @@
 
 name: state-record
-version: 0.0.1.3
+version: 0.0.1.4
 cabal-version: -any
 build-type: Simple
 license: GPL

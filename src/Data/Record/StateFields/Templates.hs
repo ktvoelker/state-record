@@ -24,7 +24,7 @@ import Language.Haskell.TH.Syntax
 --   a 'data' or 'newtype' declaration.
 --
 --   Note: in addition to adding the given prefix to each name, the first
---   character of the original name is capitalized.
+--   character of the original name is capitalized (unless the prefix is empty).
 record :: String -> Q [Dec] -> Q [Dec]
 record pre ds = ds >>= \ds -> case ds of
   [DataD cxt name tvs cons dvs] ->
@@ -40,7 +40,7 @@ record pre ds = ds >>= \ds -> case ds of
     $ "A `record' declaration must be given exactly one "
     ++ "`data' or `newtype' declaration."
   where
-    ucFirst (x : xs) = toUpper x : xs
+    ucFirst (x : xs) = if pre == "" then x : xs else toUpper x : xs
     rawName name = mkName $ '_' : pre ++ ucFirst (showName name)
     fieldName name = mkName $ pre ++ ucFirst (showName name)
     mkCon (RecC name vs) = RecC name $ map mkVar vs
