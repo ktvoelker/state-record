@@ -1,8 +1,12 @@
 
 module Data.Record.StateFields
   ( IdField(..)
-  , StateField(..)
-  , ReaderField(..)
+  , StateField()
+  , mkStateField
+  , idStateField
+  , ReaderField()
+  , mkReaderField
+  , idReaderField
   , FieldPath(..)
   , RField(..)
   , WField(..)
@@ -29,6 +33,10 @@ data StateField m a b = StateField
   , putFieldM :: b -> m ()
   }
 
+-- | Make a StateField.
+mkStateField :: (MonadState a m) => m b -> (b -> m ()) -> StateField m a b
+mkStateField = StateField
+
 -- | Make a StateField from an IdField.
 idStateField :: (MonadState a m) => IdField a b -> StateField m a b
 idStateField f =
@@ -41,6 +49,9 @@ idStateField f =
 data ReaderField m a b = ReaderField
   { getFieldR :: m b
   }
+
+mkReaderField :: (MonadReader a m) => m b -> ReaderField m a b
+mkReaderField = ReaderField
 
 -- | Make a ReaderField from an IdField.
 idReaderField :: (MonadReader a m) => IdField a b -> ReaderField m a b
@@ -145,17 +156,6 @@ instance FieldPath (ReaderField (Reader a) a b) (ReaderField (Reader b) b c)
     { getFieldR = proj ab $ getFieldR bc
     }
 
--- | The class of readable field descriptors.
-class RField f m a | f -> a, m -> a where
-  getf :: f b -> m b
-
--- | The class of writable field descriptors.
-class WField f m a | f -> a, m -> a where
-  putf :: f b -> b -> m ()
-
--- | The class of field descriptors which are both readable and writable.
-class (RField f m a, WField f m a) => RWField f m a | f -> a, m -> a
-
 -- | The class of monads which have an internal store that can be retrieved.
 class (Monad m) => MonadGet s m | m -> s where
   getStore :: m s
@@ -176,10 +176,22 @@ instance (Monad m) => MonadGet s (StateT s m) where
 getStoreProj :: (MonadGet s m) => (s -> a) -> m a
 getStoreProj f = getStore >>= return . f
 
-instance (RField f m a, WField f m a) => RWField f m a
+-- | The class of readable field descriptors.
+class RField f m a | f -> a, m -> a where
+  getf :: f b -> m b
 
 instance (MonadGet a m) => RField (IdField a) m a where
   getf = getStoreProj . getField
+
+instance (MonadState a m) => RField (StateField m a) m a where
+  getf = getFieldM
+
+instance (MonadReader a m) => RField (ReaderField m a) m a where
+  getf = getFieldR
+
+-- | The class of writable field descriptors.
+class WField f m a | f -> a, m -> a where
+  putf :: f b -> b -> m ()
 
 instance WField (IdField a) (State a) a where
   putf f b = get >>= put . putField f b
@@ -187,36 +199,13 @@ instance WField (IdField a) (State a) a where
 instance (Monad m) => WField (IdField a) (StateT a m) a where
   putf f b = get >>= put . putField f b
 
-instance (MonadState a m) => RField (StateField (State a) a) m a where
-  getf f = do
-    a <- get
-    let (b, a') = runState (getFieldM f) a
-    put a'
-    return b
-
-instance (MonadState a m) => WField (StateField (State a) a) m a where
-  putf f b = do
-    a <- get
-    let a' = execState (putFieldM f b) a
-    put a'
-
-instance (Monad m) => RField (StateField (StateT a m) a) (StateT a m) a where
-  getf = getFieldM
-
-instance (Monad m) => WField (StateField (StateT a m) a) (StateT a m) a where
+instance (MonadState a m) => WField (StateField m a) m a where
   putf = putFieldM
 
-instance (Monad m) => RField (IdField a) (ReaderT a m) a where
-  getf = asks . getField
+-- | The class of field descriptors which are both readable and writable.
+class (RField f m a, WField f m a) => RWField f m a | f -> a, m -> a
 
-instance (MonadReader a m) => RField (ReaderField (Reader a) a) m a where
-  getf f = do
-    a <- ask
-    let b = runReader (getFieldR f) a
-    return b
-
-instance (Monad m) => RField (ReaderField (ReaderT a m) a) (ReaderT a m) a where
-  getf = getFieldR
+instance (RField f m a, WField f m a) => RWField f m a
 
 -- | Modify the value of a field by applying a function.
 modf :: (Monad m, RWField f m a) => f b -> (b -> b) -> m ()
