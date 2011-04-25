@@ -23,8 +23,5 @@ extensions:
   TemplateHaskell
   MultiParamTypeClasses
   FunctionalDependencies
-  FlexibleInstances
-  FlexibleContexts
-  UndecidableInstances
-  ScopedTypeVariables
+  Rank2Types
 
