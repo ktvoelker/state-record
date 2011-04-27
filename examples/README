@@ -1,0 +1,12 @@
+
+README: usage examples for Data.Record.StateFields
+==================================================
+
+These examples do not cover everything that you can do with this module.
+
+More examples might be added if you request them.
+
+The structure is that the 'old' directory shows how you would do a certain
+thing without Data.Record.StateFields, while the corresponding file in the 'new'
+directory shows how to do the same thing with Data.Record.StateFields.
+
