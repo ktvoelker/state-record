@@ -1,6 +1,6 @@
 
 name: state-record
-version: 0.0.1.4
+version: 0.0.1.5
 cabal-version: -any
 build-type: Simple
 license: GPL
@@ -24,4 +24,7 @@ extensions:
   MultiParamTypeClasses
   FunctionalDependencies
   Rank2Types
+  FlexibleInstances
+  ScopedTypeVariables
+  FlexibleContexts
 
