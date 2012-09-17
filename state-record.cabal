@@ -1,6 +1,6 @@
 
 name: state-record
-version: 0.0.1.5
+version: 0.0.1.6
 cabal-version: -any
 build-type: Simple
 license: GPL
@@ -11,13 +11,18 @@ stability: unstable
 homepage: https://github.com/ktvoelker/state-record
 maintainer: Karl Voelker <ktvoelker@gmail.com>
 synopsis: Better records for State monad states
-description: This package provides a Template Haskell function which transforms
-  a normal record declaration into one which supports many useful operations
-  when used as the state in a State monad.
+description:
+  This package provides a Template Haskell function which transforms a normal
+  record declaration into one which supports many useful operations when used
+  as the state in a State monad.
 category: Data
 author: Karl Voelker <ktvoelker@gmail.com>
-exposed-modules: Data.Record.StateFields Data.Record.StateFields.Containers
-other-modules: Data.Record.StateFields.Core Data.Record.StateFields.Templates
+exposed-modules:
+  Data.Record.StateFields
+  Data.Record.StateFields.Containers
+other-modules:
+  Data.Record.StateFields.Core
+  Data.Record.StateFields.Templates
 hs-source-dirs: src
 extensions:
   TemplateHaskell

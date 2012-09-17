@@ -41,8 +41,8 @@ record pre ds = ds >>= \ds -> case ds of
     ++ "`data' or `newtype' declaration."
   where
     ucFirst (x : xs) = if pre == "" then x : xs else toUpper x : xs
-    rawName name = mkName $ '_' : pre ++ ucFirst (showName name)
-    fieldName name = mkName $ pre ++ ucFirst (showName name)
+    rawName name = mkName $ '_' : pre ++ ucFirst (nameBase name)
+    fieldName name = mkName $ pre ++ ucFirst (nameBase name)
     mkCon (RecC name vs) = RecC name $ map mkVar vs
     mkCon x = x
     mkVar (name, str, ty) = (rawName name, str, ty)
