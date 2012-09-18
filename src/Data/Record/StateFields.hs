@@ -61,7 +61,13 @@ idReaderField f =
   { askFieldM = asks $ getField f
   }
 
-infixl 9 //
+infixl 9 //, >/, </
+
+(>/) :: a -> IdField a b -> b
+(>/) = flip getField
+
+(</) :: a -> (IdField a b, b) -> a
+(</) rec (f, val) = putField f val rec
 
 -- | The class of field descriptors which can be chained into paths.
 class FieldPath f g h | f g -> h where

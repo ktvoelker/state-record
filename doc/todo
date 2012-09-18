@@ -1,0 +1,19 @@
+
+TODO
+====
+
+Improve the Containers module
+* Fields are just lenses; the functions in this module shouldn't directly access
+  anything, they should just create lenses
+* One type of lens should access a value in a map given a particular key, with a
+  default value to insert and access if the value is not found
+  * This is just a specialization of an accessor that provides a Maybe value
+
+Support records which have two variants with a common field by only generating
+a single field descriptor.
+
+Support underscore-based naming as well as camel case. Provide wrappers around
+a single underlying function which takes all the relevant parameters.
+
+Write tests.
+
