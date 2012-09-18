@@ -1,12 +1,17 @@
 
 name: state-record
-version: 0.0.1.6
+version: 0.1.0.0
 cabal-version: -any
 build-type: Simple
 license: GPL
 license-file: LICENSE
 copyright: (c) 2011 Karl Voelker
-build-depends: base >= 3 && < 5, containers -any, mtl -any, template-haskell -any
+build-depends:
+  base >= 4 && < 5,
+  containers >= 0.4 && < 0.5,
+  mtl >= 2.1 && < 2.2,
+  template-haskell >= 2.7 && < 2.8,
+  array >= 0.4 && < 0.5
 stability: unstable
 homepage: https://github.com/ktvoelker/state-record
 maintainer: Karl Voelker <ktvoelker@gmail.com>
