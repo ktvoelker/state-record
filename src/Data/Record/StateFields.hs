@@ -16,6 +16,8 @@ module Data.Record.StateFields
   , proj
   , projT
   , record
+  , (!/)
+  , (&/)
   ) where
 
 import Data.Record.StateFields.Core
@@ -31,6 +33,7 @@ data StateField a b = StateField
   }
 
 -- | Make a StateField from an IdField.
+idStateField :: IdField a b -> StateField a b
 idStateField f =
   StateField
   { getFieldM = gets $ getField f
@@ -44,6 +47,7 @@ data StateTField m a b = StateTField
   }
 
 -- | Make a StateTField from an IdField.
+idStateTField :: (Monad m) => IdField a b -> StateTField m a b
 idStateTField f =
   StateTField
   { getFieldT = gets $ getField f
@@ -56,18 +60,19 @@ data ReaderField a b = ReaderField
   }
 
 -- | Make a ReaderField from an IdField.
+idReaderField :: IdField a b -> ReaderField a b
 idReaderField f =
   ReaderField
   { askFieldM = asks $ getField f
   }
 
-infixl 9 //, >/, </
+infixl 9 //, !/, &/
 
-(>/) :: a -> IdField a b -> b
-(>/) = flip getField
+(!/) :: a -> IdField a b -> b
+(!/) = flip getField
 
-(</) :: a -> (IdField a b, b) -> a
-(</) rec (f, val) = putField f val rec
+(&/) :: a -> (IdField a b, b) -> a
+(&/) rec (f, val) = putField f val rec
 
 -- | The class of field descriptors which can be chained into paths.
 class FieldPath f g h | f g -> h where

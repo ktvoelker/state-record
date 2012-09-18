@@ -37,4 +37,8 @@ extensions:
   FlexibleInstances
   ScopedTypeVariables
   FlexibleContexts
+ghc-options:
+  -Wall
+  -Werror
+  -fno-warn-name-shadowing
 
