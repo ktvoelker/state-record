@@ -8,6 +8,7 @@ import qualified Data.Array.IArray as A
 import qualified Data.Map as M
 import qualified Data.Set as S
 
+import Control.Applicative
 import Data.Record.StateFields
 
 mapKey :: (Ord k) => k -> IdField (M.Map k a) (Maybe a)
@@ -34,5 +35,11 @@ arrIdx i = IdField
   , putField =
       maybe id
       $ \e a -> if A.inRange (A.bounds a) i then a A.// [(i, e)] else a
+  }
+
+inA :: (Applicative f) => IdField a b -> IdField (f a) (f b)
+inA f = IdField
+  { getField = fmap (getField f)
+  , putField = \x c -> fmap (putField f) x <*> c
   }
 
